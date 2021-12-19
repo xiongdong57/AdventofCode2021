@@ -6,7 +6,7 @@ from utils import parse_data
 from itertools import combinations
 
 
-def find_nest_loc(exp):
+def gen_explode_parts(exp):
     depth = 0
     for i, char in enumerate(exp):
         if char == '[':
@@ -22,6 +22,7 @@ def find_nest_loc(exp):
             break
 
     if depth == 5:
+        # pair within four pairs, left part and right part
         return exp[i:i+j+1], exp[:i], exp[i+j+1:]
     else:
         return None, None, None
@@ -35,7 +36,7 @@ def explode(exp):
         return str(int(m.group(0)) + right_num)
 
     exp = str(exp)
-    exp_four_pair, left_exp, right_exp = find_nest_loc(exp)
+    exp_four_pair, left_exp, right_exp = gen_explode_parts(exp)
     if not exp_four_pair:
         return exp
 
@@ -53,7 +54,8 @@ def split(exp):
         return f"[{math.floor(int(num) / 2)},{math.ceil(num / 2)}]"
 
     exp = str(exp)
-    return ast.literal_eval(re.sub(r"\d{2}", subsplit, exp, count=1))
+    out = re.sub(r"\d{2}", subsplit, exp, count=1)
+    return ast.literal_eval(out)
 
 
 def add(a, b):
@@ -63,17 +65,13 @@ def add(a, b):
 def reduce(exp):
     out = explode(exp)
     if str(out) == str(exp):
+        # explode until there is no explode and then split
         out = split(exp)
-    return out
 
-
-def recusive_reduce(exp):
-    next_iter = exp
-    while True:
-        next_iter = reduce(next_iter)
-        if str(next_iter) == str(reduce(next_iter)):
-            break
-    return next_iter
+    if str(out) == str(exp):
+        return exp
+    else:
+        return reduce(out)
 
 
 def calc_magnitude(exp):
@@ -83,16 +81,12 @@ def calc_magnitude(exp):
 
     exp = str(exp)
     out = re.sub(r'\[\d+, \d+\]', magnitude, exp)
-    return ast.literal_eval(out)
+    out = ast.literal_eval(out)
 
-
-def recusive_magnitude(exp):
-    next_iter = exp
-    while True:
-        next_iter = calc_magnitude(next_iter)
-        if str(next_iter) == str(calc_magnitude(next_iter)):
-            break
-    return next_iter
+    if isinstance(out, list):
+        return calc_magnitude(out)
+    else:
+        return out
 
 
 def day18_1(data):
@@ -101,16 +95,16 @@ def day18_1(data):
     while data:
         next_add = data.pop(0)
         running = add(running, next_add)
-        running = recusive_reduce(running)
-    return recusive_magnitude(running)
+        running = reduce(running)
+    return calc_magnitude(running)
 
 
 def day18_2(data):
     scores = []
     for elem in combinations(data, 2):
         left, right = elem
-        score1 = recusive_magnitude(recusive_reduce(add(left, right)))
-        score2 = recusive_magnitude(recusive_reduce(add(right, left)))
+        score1 = calc_magnitude(reduce(add(left, right)))
+        score2 = calc_magnitude(reduce(add(right, left)))
         scores.append(score1)
         scores.append(score2)
     return max(scores)
